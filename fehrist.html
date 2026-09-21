@@ -62,6 +62,7 @@ h1 small{font-size:12px;color:var(--muted);font-family:var(--en);margin-inline-s
 
 /* explorer */
 main{padding:10px 12px 90px;max-width:720px;margin:0 auto}
+body.admin main{padding-bottom:150px}
 .ladder{list-style:none;margin:0 0 8px;padding:0 6px 0 0;position:relative}
 .ladder li{position:relative;display:flex;align-items:center;gap:10px;padding-inline-start:22px;min-height:34px}
 .ladder li::before{content:"";position:absolute;inset-inline-start:6px;top:0;bottom:0;width:2px;background:var(--line)}
@@ -98,6 +99,9 @@ h2 .ln{flex:1;height:1px;background:var(--line)}
 .kid .go.leaf{background:var(--bg);color:var(--muted);border:1px dashed var(--line)}
 .kid .go .arr{font-family:var(--en);font-size:16px}
 .empty{color:var(--muted);padding:6px 4px}
+.reorder{display:flex;gap:6px;align-items:center;justify-content:flex-end;padding:4px 6px 0;font-size:13px;color:#7a6520}
+.reorder button{min-height:32px;padding:0 10px;font-size:13px;background:#fffbe9;border-color:#e6d9a8}
+.reorder button[disabled]{opacity:.35;cursor:default}
 footer{padding:16px 12px 24px;text-align:center;color:var(--muted);font-size:13px;line-height:2}
 footer button{min-height:36px;font-size:13px;padding:0 12px;margin-top:6px}
 
@@ -349,13 +353,15 @@ function renderList(){
     ch.forEach(function(c){
       var k=kids[c.id].length;
       h+='<li><button class="kid" style="'+gc(c._d)+'" data-go="'+c.id+'"><span class="nm">'+esc(c.ur)+'<span class="en">'+esc(c.en)+'</span>'+(c.note?'<span class="nt">'+esc(c.note)+'</span>':'')+'</span>'+
-        (k?'<span class="go"><b>'+ud(k)+' بیٹے</b><span>دیکھیں <span class="arr">←</span></span></span>':'<span class="go leaf"><span>آگے کوئی</span><span>درج نہیں</span></span>')+'</button></li>';
+        (k?'<span class="go"><b>'+ud(k)+' بیٹے</b><span>دیکھیں <span class="arr">←</span></span></span>':'<span class="go leaf"><span>آگے کوئی</span><span>درج نہیں</span></span>')+'</button>'+
+        (S.admin&&ch.length>1?'<div class="reorder"><span>ترتیب:</span><button data-mv="'+c.id+'|up" title="اوپر"'+(c===ch[0]?' disabled':'')+'>↑ اوپر</button><button data-mv="'+c.id+'|down" title="نیچے"'+(c===ch[ch.length-1]?' disabled':'')+'>↓ نیچے</button></div>':'')+'</li>';
     });
     h+='</ul>';
   }
   m.innerHTML=h;
   m.querySelectorAll('[data-go]').forEach(function(b){b.onclick=function(){go(+b.getAttribute('data-go'));};});
   m.querySelectorAll('[data-chart]').forEach(function(b){b.onclick=function(){S.sel=+b.getAttribute('data-chart');setView('chart');};});
+  m.querySelectorAll('[data-mv]').forEach(function(b){b.onclick=function(){var v=b.getAttribute('data-mv').split('|');adminAction(v[1],byId[+v[0]]);};});
   if(S.admin)renderAdmin();
 }
 
@@ -688,21 +694,22 @@ function sha256(s){
 }
 window.__sha256=sha256;
 function adminToggle(){
-  if(S.admin){S.admin=false;document.getElementById('adminbar').hidden=true;return;}
+  if(S.admin){S.admin=false;PW='';document.getElementById('adminbar').hidden=true;rerender();return;}
   var m=modal('<h3>ایڈمن پاس ورڈ</h3><p class="muted" style="font-size:14px">نام شامل کرنے یا بدلنے کے لیے پاس ورڈ درکار ہے۔</p><input type="password" id="pw" class="en" autocomplete="off"><div class="err" id="pwerr"></div><div class="row"><span class="sp"></span><button data-close>منسوخ</button><button class="primary" id="pwok">داخل ہوں</button></div>');
   var inp=m.querySelector('#pw');inp.focus();
   function ok(){
-    if(SRC){m.querySelector('#pwerr').textContent='جانچ ہو رہی ہے…';api({pw:inp.value,action:'verify'},function(j){if(j.ok){PW=inp.value;m.remove();S.admin=true;renderAdmin();}else m.querySelector('#pwerr').textContent=errText(j.error);});return;}
-    if(sha256(inp.value)===DB.pw){m.remove();S.admin=true;renderAdmin();}else{m.querySelector('#pwerr').textContent='پاس ورڈ غلط ہے';}}
+    if(SRC){m.querySelector('#pwerr').textContent='جانچ ہو رہی ہے…';api({pw:inp.value,action:'verify'},function(j){if(j.ok){PW=inp.value;m.remove();S.admin=true;rerender();}else m.querySelector('#pwerr').textContent=errText(j.error);});return;}
+    if(sha256(inp.value)===DB.pw){m.remove();S.admin=true;rerender();}else{m.querySelector('#pwerr').textContent='پاس ورڈ غلط ہے';}}
   m.querySelector('#pwok').onclick=ok;inp.onkeydown=function(e){if(e.key==='Enter')ok();};
 }
 function curPerson(){return byId[S.view==='chart'?(S.sel||S.cur):S.cur];}
 function renderAdmin(){
+  document.body.classList.toggle('admin',!!S.admin);
   var bar=document.getElementById('adminbar');if(!bar)return;bar.hidden=false;
   var p=curPerson();
   var h='<span class="lbl">ایڈمن: <b>'+esc(p.ur)+'</b>'+(S.dirty&&!SRC?' · <span style="color:#b3261e">تبدیلیاں ابھی فائل میں محفوظ نہیں</span>':'')+(SRC?' · <span style="color:#1f6b52">تبدیلیاں فوراً آن لائن محفوظ ہوتی ہیں</span>':'')+'</span>';
   h+='<button data-a="add">+ بیٹا شامل کریں</button><button data-a="edit">✎ نام بدلیں</button>';
-  if(p.p){h+='<button data-a="up" title="اوپر">↑</button><button data-a="down" title="نیچے">↓</button>';if(!kids[p.id].length)h+='<button data-a="del" class="danger">حذف</button>';}
+  if(p.p&&!kids[p.id].length)h+='<button data-a="del" class="danger">حذف</button>';
   h+=(SRC?'<button data-a="save">⬇ بیک اپ فائل</button>':'<button data-a="save" class="primary">⬇ نئی فائل محفوظ کریں</button>')+'<button data-a="pw">پاس ورڈ</button><button data-a="off">بند</button>';
   bar.innerHTML=h;
   bar.querySelectorAll('[data-a]').forEach(function(b){b.onclick=function(){adminAction(b.getAttribute('data-a'),p);};});
@@ -724,7 +731,7 @@ function refresh(){
 function busy(on){var b=document.getElementById('adminbar');if(b)b.style.opacity=on?'.5':'';}
 function remoteThen(body,after){busy(true);api(body,function(j){busy(false);if(j.ok){after(j);}else{modal('<h3>محفوظ نہیں ہو سکا</h3><p>'+errText(j.error)+'</p><div class="row"><span class="sp"></span><button class="primary" data-close>ٹھیک ہے</button></div>');remoteLoad(function(){});}});}
 function adminAction(a,p){
-  if(a==='off'){S.admin=false;PW='';document.getElementById('adminbar').hidden=true;return;}
+  if(a==='off'){S.admin=false;PW='';document.getElementById('adminbar').hidden=true;rerender();return;}
   if(SRC){
     if(a==='edit'){personForm('نام میں ترمیم',p,function(ur,en,note){remoteThen({pw:PW,action:'edit',person:{id:p.id,ur:ur,en:en,note:note}},function(){p.ur=ur;p.en=en;p.note=note;index();rerender();});});return;}
     if(a==='add'){personForm('نیا بیٹا: '+esc(p.ur)+' کی اولاد میں',{},function(ur,en,note){remoteThen({pw:PW,action:'add',person:{p:p.id,ur:ur,en:en,note:note}},function(j){var np={id:j.id,p:p.id,ur:ur,en:en,note:note};var lastIdx=DB.people.indexOf(p);(function scan(x){var i=DB.people.indexOf(x);if(i>lastIdx)lastIdx=i;kids[x.id].forEach(scan);})(p);DB.people.splice(lastIdx+1,0,np);index();rerender();if(S.view==='chart')select(np.id,true);else go(np.id);});});return;}
