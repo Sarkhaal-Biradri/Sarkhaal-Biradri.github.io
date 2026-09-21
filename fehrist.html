@@ -304,7 +304,7 @@ function shell(){
     app.appendChild(el('div',{id:'adminbar',hidden:''}));
     var f=el('footer');
     f.innerHTML='کل افراد: <b>'+ud(DB.people.length)+'</b> · نسلیں: <b>'+ud(maxDepth())+'</b>'+(DB.updated?' · تازہ کاری: <span class="en">'+esc(DB.updated)+'</span>':'')+(SRC?' · آن لائن':'')+'<br>';
-    var pb2=el('button',null,'فہرست پرنٹ کریں');pb2.onclick=printList;f.appendChild(pb2);f.appendChild(document.createTextNode(' '));
+    var pb2=el('button',{class:'primary'},'⬇ PDF بنائیں');pb2.onclick=pdfFlow;f.appendChild(pb2);f.appendChild(document.createTextNode(' '));
     var ab2=el('button',null,'⚙ ایڈمن');ab2.onclick=adminToggle;f.appendChild(ab2);
     app.appendChild(f);
     renderList();
@@ -608,14 +608,15 @@ function renderSheet(p){
 /* ---------- print / export ---------- */
 var PR=document.getElementById('printRoot');
 function preparePrint(){
+  if(!L.W)layout(S.orient);
   var svg=svgTree(true);
   var pad=40, W=L.W+pad*2, H=L.H+pad*2+120;
   PR.innerHTML='<div style="padding:'+pad+'px;width:'+W+'px;height:'+H+'px;overflow:hidden;direction:rtl"><h1 class="ptitle">'+esc(DB.title)+' <span class="en" style="font-size:14px;color:#666;font-weight:400;margin-inline-start:14px">'+esc(DB.subtitle||'')+'</span></h1>'+
     '<div class="psub">کل افراد '+ud(DB.people.length)+' · نسلیں '+ud(maxDepth())+(DB.updated?' · <span class="en">'+esc(DB.updated)+'</span>':'')+'</div>'+svg+'</div>';
-  fitText(PR.querySelector('svg'));
   var st=document.getElementById('pagesize')||el('style',{id:'pagesize'});
   st.textContent='@page{size:'+W+'px '+H+'px;margin:0}';document.head.appendChild(st);
   document.body.classList.add('printing');
+  fitText(PR.querySelector('svg'));
   window.__printSize={w:W,h:H};
   window.onafterprint=function(){document.body.classList.remove('printing');};
 }
